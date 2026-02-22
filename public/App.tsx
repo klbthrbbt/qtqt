@@ -5,8 +5,7 @@ import { fetchDevotionalFromDb } from './services/dbService';
 import Header from './components/Header';
 import FooterNav from './components/FooterNav';
 import BibleCard from './components/BibleCard';
-import CalendarModal from './components/CalendarModal';
-import ReflectionCard from './components/ReflectionCard';
+import DatePickerModal from './components/DatePickerModal';
 
 const LYRICS = [
   "주의 말씀은 내 발의 등이요 내 길에 빛이니이다",
@@ -26,11 +25,9 @@ const App: React.FC = () => {
     fileStatus: { krv: true, uriman: true, niv: true }
   });
 
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [lyricIdx, setLyricIdx] = useState(0);
   const activeRequestRef = useRef<string | null>(null);
-  const touchStartX = useRef<number>(0);
-  const touchEndX = useRef<number>(0);
 
   useEffect(() => {
     if (state.loading) {
@@ -83,34 +80,6 @@ const App: React.FC = () => {
   const handleDateChange = (newDate: Date) => fetchData(newDate);
   const handleVersionChange = (version: BibleVersion) => setState(prev => ({ ...prev, selectedVersion: version }));
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    touchEndX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = () => {
-    const swipeThreshold = 50;
-    const diff = touchStartX.current - touchEndX.current;
-
-    if (Math.abs(diff) > swipeThreshold) {
-      const newDate = new Date(state.currentDate);
-      if (diff > 0) {
-        // 좌측 스와이프 -> 다음날
-        newDate.setDate(newDate.getDate() + 1);
-      } else {
-        // 우측 스와이프 -> 이전날
-        newDate.setDate(newDate.getDate() - 1);
-      }
-      handleDateChange(newDate);
-    }
-
-    touchStartX.current = 0;
-    touchEndX.current = 0;
-  };
-
   const handleShare = async () => {
     if (!state.devotional) return;
     let text = `[오늘의 말씀]\n${state.devotional.reference}\n\n"${state.devotional.texts[state.selectedVersion]}"`;
@@ -131,12 +100,7 @@ const App: React.FC = () => {
         onVersionChange={handleVersionChange}
       />
       
-      <main 
-        className="flex-1 overflow-y-auto relative no-scrollbar"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
+      <main className="flex-1 overflow-y-auto relative no-scrollbar">
         {state.loading ? (
           <div className="h-full flex flex-col items-center justify-center px-10 pb-32">
             <div className="mb-14 text-center">
@@ -176,10 +140,18 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <FooterNav date={state.currentDate} onDateChange={handleDateChange} onOpenCalendar={() => setIsCalendarOpen(true)} />
+      <FooterNav 
+        date={state.currentDate} 
+        reference={state.devotional?.reference || ''}
+        onOpenDatePicker={() => setIsDatePickerOpen(true)} 
+      />
 
-      {isCalendarOpen && (
-        <CalendarModal currentDate={state.currentDate} onDateSelect={handleDateChange} onClose={() => setIsCalendarOpen(false)} />
+      {isDatePickerOpen && (
+        <DatePickerModal 
+          currentDate={state.currentDate} 
+          onDateSelect={(d) => { handleDateChange(d); setIsDatePickerOpen(false); }}
+          onClose={() => setIsDatePickerOpen(false)} 
+        />
       )}
 
       <button onClick={handleShare} className="fixed bottom-32 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-all z-50 hover:bg-blue-700">
