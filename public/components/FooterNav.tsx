@@ -15,7 +15,7 @@ const FooterNav: React.FC<FooterNavProps> = ({ date, reference, onOpenDatePicker
   const dayOfWeek = DAYS[date.getDay()];
 
   return (
-    <footer className="bg-white border-t border-stone-100 z-40 px-5 pt-3 pb-6 shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.01)]">
+    <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-100 z-40 px-5 pt-3 shadow-[0_-4px_10px_rgba(0,0,0,0.01)]" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
       <div className="max-w-3xl mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-3 min-w-0">
           <div className="flex items-baseline space-x-1.5 shrink-0">
