@@ -1,0 +1,12 @@
+name = "qt-bible-api"
+main = "src/index.js"
+compatibility_date = "2026-01-30"
+
+[assets]
+directory = "./public/dist"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "rwwdt_dailybbang"
+database_id = "a5f1a3ab-7384-4e40-843a-040bacf259b4"
