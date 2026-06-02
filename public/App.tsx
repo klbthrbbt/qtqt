@@ -91,7 +91,7 @@ const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="h-screen w-full bg-white dark:bg-[#0b1147] text-[#333] dark:text-white selection:bg-blue-50 dark:selection:bg-vivid-royal/40 flex flex-col overflow-hidden">
+    <div className="h-screen w-full bg-white dark:bg-sop-bg-dark text-[#333] dark:text-white selection:bg-blue-50 dark:selection:bg-sop-hover/40 flex flex-col overflow-hidden">
       <Header
         selectedVersion={state.selectedVersion}
         fileStatus={state.fileStatus}
@@ -105,23 +105,23 @@ const App: React.FC = () => {
               <p className="text-blue-500 font-semibold text-[10px] tracking-[0.3em] uppercase mb-4 animate-pulse eng-font">
                 READING WORD
               </p>
-              <div className="w-8 h-[2px] bg-blue-100 dark:bg-amber-gold/40 mx-auto"></div>
+              <div className="w-8 h-[2px] bg-blue-100 dark:bg-sop-gold/40 mx-auto"></div>
             </div>
             <div className="relative h-24 w-full flex items-center justify-center overflow-hidden">
-              <p key={lyricIdx} className="text-stone-400 dark:text-stone-300 text-center italic serif-font text-[15px] leading-relaxed animate-in fade-in slide-in-from-bottom-2 duration-1000 max-w-[280px] break-keep">
+              <p key={lyricIdx} className="text-stone-400 dark:text-sop-fg text-center italic serif-font text-[15px] leading-relaxed animate-in fade-in slide-in-from-bottom-2 duration-1000 max-w-[280px] break-keep">
                 "{LYRICS[lyricIdx]}"
               </p>
             </div>
           </div>
         ) : state.error ? (
           <div className="text-center py-20 px-8 max-w-md mx-auto flex flex-col items-center">
-            <div className="w-14 h-14 bg-stone-50 dark:bg-midnight-blue rounded-full flex items-center justify-center mb-6 border border-stone-100 dark:border-white/10">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-stone-300 dark:text-amber-gold"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div className="w-14 h-14 bg-stone-50 dark:bg-sop-bg rounded-full flex items-center justify-center mb-6 border border-stone-100 dark:border-sop-fg/10">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-stone-300 dark:text-sop-gold"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             </div>
-            <p className="text-stone-400 dark:text-stone-300 mb-8 text-sm leading-relaxed break-keep font-medium">{state.error}</p>
+            <p className="text-stone-400 dark:text-sop-fg mb-8 text-sm leading-relaxed break-keep font-medium">{state.error}</p>
             <button 
               onClick={() => fetchData(state.currentDate)} 
-              className="w-full py-4 bg-blue-600 dark:bg-amber-gold text-white dark:text-midnight-blue rounded-full text-[12px] font-semibold tracking-[0.2em] uppercase active:scale-95 transition-all shadow-lg eng-font"
+              className="w-full py-4 bg-blue-600 dark:bg-sop-gold text-white dark:text-sop-bg-dark rounded-full text-[12px] font-semibold tracking-[0.2em] uppercase active:scale-95 transition-all shadow-lg eng-font"
             >
               Retry
             </button>
@@ -155,7 +155,7 @@ const App: React.FC = () => {
       <button
         onClick={toggleTheme}
         aria-label={isDark ? '라이트 모드로 전환' : '다크 모드로 전환'}
-        className="fixed bottom-24 right-6 w-14 h-14 bg-blue-600 dark:bg-amber-gold text-white dark:text-midnight-blue rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-all z-50 hover:bg-blue-700 dark:hover:bg-deep-saffron"
+        className="fixed bottom-24 right-6 w-14 h-14 bg-blue-600 dark:bg-sop-gold text-white dark:text-sop-bg-dark rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-all z-50 hover:bg-blue-700 dark:hover:bg-sop-orange"
       >
         {isDark ? (
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
