@@ -2,6 +2,12 @@ name = "qt-bible-api"
 main = "src/index.js"
 compatibility_date = "2026-01-30"
 
+# 배포 전에 프론트엔드(public/dist)를 빌드한다.
+# Cloudflare Git 자동 빌드의 `wrangler deploy`와 로컬 배포 모두 이 단계를 거쳐
+# gitignore된 public/dist 부재로 배포가 실패하던 문제를 막는다.
+[build]
+command = "cd public && npm install && npm run build"
+
 [assets]
 directory = "./public/dist"
 binding = "ASSETS"
