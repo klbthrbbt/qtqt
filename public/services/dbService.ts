@@ -34,19 +34,73 @@ const ID_ENG_NAME_MAP: Record<number, string> = {
   60: "1 Peter", 61: "2 Peter", 62: "1 John", 63: "2 John", 64: "3 John", 65: "Jude", 66: "Revelation"
 };
 
-function parseAbbrReference(ref: string) {
-  const match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:[-~](\d+))?$/);
-  if (!match) return null;
+// 참조 문자열을 표준 형태로 정규화한다.
+// - 전각 콜론(：)·전각 숫자(０-９)·각종 대시(– — − －)·각종 물결(∼ 〜 ～)을 표준 ASCII로 치환
+// - 연속 공백을 하나로 축약 후 trim
+export function normalizeReference(ref: string): string {
+  return ref
+    .replace(/[：﹕]/g, ':')                                   // 전각/소형 콜론
+    .replace(/[–—−﹣－]/g, '-')                                // en/em/minus/전각 대시 → 하이픈
+    .replace(/[∼〜～]/g, '~')                                  // 각종 물결 → ~
+    .replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xFEE0)) // 전각 숫자 → 반각
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-  const abbr = match[1].trim();
-  const chapter = parseInt(match[2]);
-  const start = parseInt(match[3]);
-  const end = match[4] ? parseInt(match[4]) : start;
-  
+function parseAbbrReference(ref: string) {
+  if (!ref) return null;
+  const s = normalizeReference(ref);
+
+  // 1) 책약칭 + 장:절[ -~ (장:)?절 ]  (끝 앵커 없이 뒤 잡음 허용)
+  //    예) "마 8:14", "마 8:14~15", "막 8:34~9:1"(교차 장), "마 5:1, 3"(콤마 뒤 무시)
+  const m = s.match(/^(.+?)\s+(\d+)\s*:\s*(\d+)(?:\s*[-~]\s*(?:(\d+)\s*:\s*)?(\d+))?/);
+  // 2) 책약칭 + 장 (절 없음)  예) "시 117"
+  const mChapter = !m ? s.match(/^(.+?)\s+(\d+)\s*$/) : null;
+
+  if (!m && !mChapter) return null;
+
+  const abbr = (m ? m[1] : mChapter![1]).trim();
   const bookId = ABBR_ID_MAP[abbr];
   if (!bookId) return null;
 
-  return { bookId, chapter, start, end, bookName: ID_NAME_MAP[bookId], engBookName: ID_ENG_NAME_MAP[bookId] };
+  const chapter = parseInt(m ? m[2] : mChapter![2]);
+
+  let start: number;
+  let end: number;
+  let endChapter = chapter;
+
+  if (m) {
+    start = parseInt(m[3]);
+    endChapter = m[4] ? parseInt(m[4]) : chapter;
+    end = m[5] ? parseInt(m[5]) : start;
+    // 교차 장(예: 막 8:34~9:1)은 단일 장 쿼리만 가능하므로 시작 장의 끝까지 조회한다.
+    const queryEnd = endChapter !== chapter ? 999 : end;
+    return {
+      bookId,
+      chapter,
+      start,
+      end: queryEnd,
+      endChapter,
+      endVerse: end,
+      bookName: ID_NAME_MAP[bookId],
+      engBookName: ID_ENG_NAME_MAP[bookId],
+    };
+  }
+
+  // 장만 지정: 해당 장 전체 조회
+  start = 1;
+  end = 999;
+  return {
+    bookId,
+    chapter,
+    start,
+    end,
+    endChapter,
+    endVerse: end,
+    bookName: ID_NAME_MAP[bookId],
+    engBookName: ID_ENG_NAME_MAP[bookId],
+    chapterOnly: true,
+  };
 }
 
 export const fetchDevotionalFromDb = async (date: Date): Promise<BibleTextResponse | null> => {
@@ -77,8 +131,15 @@ export const fetchDevotionalFromDb = async (date: Date): Promise<BibleTextRespon
       else if (item.translation === "NIV") texts[BibleVersion.NIV] += content;
     });
 
-    const fullReference = `${params.bookName} ${params.chapter}:${params.start}${params.start !== params.end ? `~${params.end}` : ""}`;
-    const engReference = `${params.engBookName} ${params.chapter}:${params.start}${params.start !== params.end ? `~${params.end}` : ""}`;
+    // 표시용 참조 라벨 생성 (교차 장 / 장-only 케이스 포함)
+    const buildLabel = (bookName: string) => {
+      if (params.chapterOnly) return `${bookName} ${params.chapter}`;
+      const head = `${bookName} ${params.chapter}:${params.start}`;
+      if (params.endChapter !== params.chapter) return `${head}~${params.endChapter}:${params.endVerse}`;
+      return params.start !== params.endVerse ? `${head}~${params.endVerse}` : head;
+    };
+    const fullReference = buildLabel(params.bookName);
+    const engReference = buildLabel(params.engBookName);
 
     return {
       reference: fullReference,
