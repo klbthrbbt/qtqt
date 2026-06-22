@@ -144,11 +144,11 @@ export const fetchDevotionalFromDb = async (date: Date): Promise<BibleTextRespon
       [BibleVersion.NIV]: ""
     };
 
-    // 교차 장이면 절 번호가 장마다 초기화되므로 "장:절"로 표기해 모호함을 없앤다.
-    const isCrossChapter = params.endChapter !== params.chapter;
+    // 절 번호만 표기한다("17.", "1."). 교차 장이면 절 번호가 장마다 초기화되지만
+    // 장 범위는 헤더 라벨(예: 요나 1:17~2:10)이 전달한다. "장:절"로 표기하면
+    // BibleCard.parseVerses의 /(\d+\.\s+)/ 분리와 충돌해 군더더기가 생긴다.
     rawData.forEach((item: any) => {
-      const label = isCrossChapter ? `${item.chapter}:${item.verse}` : `${item.verse}`;
-      const content = `${label}. ${item.content} `;
+      const content = `${item.verse}. ${item.content} `;
       if (item.translation === "KRV") texts[BibleVersion.KRV] += content;
       else if (item.translation === "URIMAN") texts[BibleVersion.URIMAN] += content;
       else if (item.translation === "NIV") texts[BibleVersion.NIV] += content;
