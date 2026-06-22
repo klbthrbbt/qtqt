@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { normalizeReference } from '../services/dbService';
+import { formatReferenceLabel } from '../services/dbService';
 
 interface DatePickerModalProps {
   currentDate: Date;
@@ -78,15 +78,7 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({ currentDate, onDateSe
     return `${m}/${day}`;
   };
 
-  const formatReference = (ref: string) => {
-    const s = normalizeReference(ref);
-    const match = s.match(/^(.+?)\s+(\d+)\s*:\s*(\d+)(?:\s*[-~]\s*(?:(\d+)\s*:\s*)?(\d+))?/);
-    if (!match) return s;
-    const [, book, chapter, start, endChapter, end] = match;
-    if (!end) return `${book} ${chapter}:${start}`;
-    if (endChapter) return `${book} ${chapter}:${start}~${endChapter}:${end}`;
-    return `${book} ${chapter}:${start}~${end}`;
-  };
+  const formatReference = (ref: string) => formatReferenceLabel(ref);
 
   const isSelected = (d: Date) => d.toDateString() === selectedDate.toDateString();
   const isToday = (d: Date) => d.toDateString() === today.toDateString();

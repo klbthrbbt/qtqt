@@ -124,13 +124,14 @@ dbService.fetchDevotionalFromDb(date)
    │   1) sheetService.getReferenceForDate(date)
    │        └─▶ GET /api/reference  →  [{date:"YYYY-MM-DD", reference:"마 8:14~15"}, ...]
    │              찾기: list.find(item => item.date === ISO(date))
-   │   2) parseAbbrReference("마 8:14~15")
-   │        └─ 정규식 ^(.+?)\s+(\d+):(\d+)(?:[-~](\d+))?$  +  ABBR_ID_MAP("마"→40)
-   │        └─ { bookId:40, chapter:8, start:14, end:15 }
-   │   3) GET /api/bible?book=40&ch=8&start=14&end=15
-   │        └─▶ D1: SELECT translation, verse, content
+   │   2) parseReference("마 8:14~15")  (normalizeReference로 전각/대시 정규화 후 파싱, 교차 장·장-only 지원)
+   │        └─ ABBR_ID_MAP("마"→40)
+   │        └─ { bookId:40, chapter:8, start:14, endChapter:8, endVerse:15 }
+   │   3) GET /api/bible?book=40&ch=8&start=14&endCh=8&end=15
+   │        └─▶ D1: SELECT translation, chapter, verse, content
    │                FROM bible_verses
-   │                WHERE book_id=? AND chapter=? AND verse BETWEEN ? AND ?
+   │                WHERE book_id=? AND (chapter*1000+verse) BETWEEN ? AND ?  (교차 장 지원)
+   │                ORDER BY chapter, verse
    │   4) translation별로 구절 누적 → texts{ KRV, (URIMAN), NIV }
    ▼
 BibleTextResponse { reference, engReference, texts } → React 상태 → <BibleCard/>
@@ -292,7 +293,8 @@ Hono 앱에 Chanfana로 `/api/tasks*` CRUD와 Swagger UI(`/`)를 등록합니다
 
 ### 참조 문자열 형식 / Reference string format
 - Sheets의 `reference`는 `마 8:14~15`처럼 **한글 약칭 + 장:절 범위** 형태(`-` 또는 `~`).
-- `dbService.parseAbbrReference`가 정규식 `^(.+?)\s+(\d+):(\d+)(?:[-~](\d+))?$` 로 파싱하고 `ABBR_ID_MAP`(예: `마→40`)으로 `book_id`를 얻습니다.
+- `dbService.parseReference`가 `normalizeReference`(전각 콜론·숫자, 각종 대시/물결을 표준 ASCII로 정규화)를 거쳐 파싱하며, **교차 장**(`막 8:34~9:1`)·**장-only**(`시 117`)도 지원합니다. `ABBR_ID_MAP`(예: `마→40`)으로 `book_id`를 얻습니다.
+- 교차 장은 워커 `/api/bible`의 복합 키 범위 조회(`endCh` 파라미터)로 끝 장 절까지 한 번에 가져옵니다.
 
 ---
 
