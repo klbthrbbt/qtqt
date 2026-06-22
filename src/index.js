@@ -114,6 +114,8 @@ export default {
       const ch = Number(url.searchParams.get('ch')) || 8;
       const start = Number(url.searchParams.get('start')) || 14;
       const end = Number(url.searchParams.get('end')) || 15;
+      // 끝 장(생략 시 시작 장과 동일). 교차 장 참조(예: 막 8:34~9:1) 지원용.
+      const endCh = Number(url.searchParams.get('endCh')) || ch;
 
       if (!env.DB) {
         return new Response("데이터베이스 연결 설정(Binding)이 누락되었습니다.", { status: 500 });
@@ -125,9 +127,13 @@ export default {
         const cached = await cache.match(cacheKey);
         if (cached) return cached;
 
+        // (장*1000+절) 복합 키 범위로 같은 장/교차 장을 한 번에 조회한다.
+        // 정경의 어느 장도 1000절 미만이므로 인접 장과 범위가 겹치지 않는다.
+        const lo = ch * 1000 + start;
+        const hi = endCh * 1000 + end;
         const { results } = await env.DB.prepare(
-          "SELECT translation, verse, content FROM bible_verses WHERE book_id = ? AND chapter = ? AND verse BETWEEN ? AND ?"
-        ).bind(book, ch, start, end).all();
+          "SELECT translation, chapter, verse, content FROM bible_verses WHERE book_id = ? AND (chapter * 1000 + verse) BETWEEN ? AND ? ORDER BY chapter, verse"
+        ).bind(book, lo, hi).all();
 
         const response = new Response(JSON.stringify(results), {
           headers: {

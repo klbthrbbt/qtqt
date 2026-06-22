@@ -67,8 +67,8 @@ cd public && npm run build && cd .. && npm run deploy
 App.tsx fetchData(date)
   → dbService.fetchDevotionalFromDb(date)
       → sheetService.getReferenceForDate(date)  → GET /api/reference  → ISO 날짜 매칭
-      → parseAbbrReference("마 8:14~15")         → {book_id, chapter, start, end}
-      → GET /api/bible?book=&ch=&start=&end=     → D1 구절
+      → parseReference("마 8:14~15")             → {bookId, chapter, start, endChapter, endVerse, ...}
+      → GET /api/bible?book=&ch=&start=&endCh=&end= → D1 구절(교차 장 지원)
       → translation별 누적 → texts{KRV,(URIMAN),NIV}
   → BibleTextResponse → React 상태 → <BibleCard/>
 ```
@@ -114,8 +114,9 @@ App.tsx fetchData(date)
 - **의도**: "엣지 보관(1년) ↔ 클라이언트 재확인(5분)"을 분리. 캐시 헤더를 단순화할 때 이 분리를 무너뜨리지 말 것.
 
 ### `/api/bible` 계약
-- 쿼리 `book`(기본 40), `ch`(8), `start`(14), `end`(15) → `bible_verses` 범위 조회.
-- 반환: `[{ translation, verse, content }]`, `Cache-Control: public, max-age=31536000, immutable`.
+- 쿼리 `book`(기본 40), `ch`(8), `start`(14), `end`(15), `endCh`(생략 시 `ch`) → `bible_verses` 범위 조회.
+- 범위는 **복합 키 `(chapter*1000+verse)` BETWEEN `ch*1000+start` AND `endCh*1000+end`**로 조회 → 같은 장·교차 장(예: `막 8:34~9:1`)을 한 번에. 정경 어느 장도 1000절 미만이라 인접 장과 겹치지 않음.
+- 반환: `[{ translation, chapter, verse, content }]`(장 포함, `ORDER BY chapter, verse`), `Cache-Control: public, max-age=31536000, immutable`.
 - `env.DB` 없으면 한국어 메시지로 `500`.
 - 캐시 키는 전체 URL이므로 쿼리 파라미터가 다르면 별도 캐시 항목.
 
@@ -150,7 +151,7 @@ App.tsx fetchData(date)
 
 **`bible_verses`(쿼리에서 역추론)**: `book_id`(1–66), `chapter`, `verse`, `translation`('KRV'|'NIV'|'URIMAN'), `content`. 인덱스 `idx_bible_lookup(book_id, chapter, verse)`. **권위 있는 `CREATE TABLE` DDL은 저장소에 없음.**
 
-**참조 형식**: `마 8:14~15`(한글 약칭 + 장:절, `-`/`~`). `parseAbbrReference` 정규식 `^(.+?)\s+(\d+):(\d+)(?:[-~](\d+))?$` + `ABBR_ID_MAP`(예 `마→40`). 책 ID↔한/영 이름 매핑 테이블은 `dbService.ts`에 있음.
+**참조 형식**: `마 8:14~15`(한글 약칭 + 장:절, `-`/`~`). `parseReference`가 `normalizeReference`(전각 콜론·숫자, 각종 대시/물결 정규화) 후 파싱하며 **교차 장(`막 8:34~9:1`)·장-only(`시 117`)** 도 지원 + `ABBR_ID_MAP`(예 `마→40`). 라벨은 `buildReferenceLabel`(카드)·`formatReferenceLabel`(모달) 공용. 책 ID↔한/영 이름 매핑 테이블은 `dbService.ts`에 있음.
 
 ---
 
