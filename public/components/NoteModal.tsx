@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { toDateKey, getNote, saveNote } from '../services/noteService';
 
 interface NoteModalProps {
@@ -52,6 +53,22 @@ const NoteModal: React.FC<NoteModalProps> = ({ date, reference, onClose }) => {
     }
   }, []);
 
+  // 모바일 키보드가 화면을 가리는 높이(px). visualViewport로 추적해
+  // 자동저장 필을 항상 키보드 위에 띄운다. 데스크탑에선 0.
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setKeyboardInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, []);
+
   const handleDelete = () => {
     if (window.confirm('이 날짜의 노트를 삭제할까요?')) {
       setText('');
@@ -92,12 +109,61 @@ const NoteModal: React.FC<NoteModalProps> = ({ date, reference, onClose }) => {
         </div>
       </div>
 
+      {/* 자동저장 상태 필 — 키보드 위(모바일) / 하단 바 위(데스크탑) 우측에 반투명 표시.
+          body 포털 + 전부 인라인 스타일: 모달의 등장 애니메이션 transform이 fixed 기준을
+          바꾸고, CDN Tailwind가 포털 요소에 클래스를 입혀주지 않기 때문. */}
+      {text.trim() !== '' && createPortal(
+        (() => {
+          const isDark = document.documentElement.classList.contains('dark');
+          const bg = isDark ? 'rgba(30, 30, 63, 0.78)' : 'rgba(255, 255, 255, 0.78)';
+          const border = saved
+            ? (isDark ? '1px solid rgba(250, 208, 0, 0.35)' : '1px solid rgba(134, 239, 172, 0.8)')
+            : (isDark ? '1px solid rgba(165, 153, 233, 0.2)' : '1px solid rgba(214, 211, 209, 0.8)');
+          const color = saved
+            ? (isDark ? '#fad000' : '#16a34a')
+            : (isDark ? 'rgba(165, 153, 233, 0.75)' : '#a8a29e');
+          return (
+            <div
+              style={{
+                position: 'fixed',
+                right: '1.25rem',
+                bottom: `calc(${keyboardInset + (keyboardInset > 80 ? 12 : 76)}px + env(safe-area-inset-bottom, 0px))`,
+                zIndex: 110,
+                pointerEvents: 'none',
+                transition: 'bottom 0.2s ease',
+              }}
+            >
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '8px 14px',
+                  borderRadius: 9999,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  background: bg,
+                  border,
+                  color,
+                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.12), 0 4px 6px -4px rgba(0,0,0,0.1)',
+                  transition: 'color 0.3s ease, border-color 0.3s ease',
+                }}
+              >
+                {saved ? '✓ 저장됨' : '저장 중…'}
+              </span>
+            </div>
+          );
+        })(),
+        document.body
+      )}
+
       <div className="flex-1 overflow-hidden">
         <div className="max-w-3xl mx-auto h-full px-5 py-4">
           <textarea
             ref={textareaRef}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => { setText(e.target.value); setSaved(false); }}
             placeholder="오늘 말씀에서 받은 은혜와 적용을 기록해보세요..."
             className="w-full h-full resize-none bg-transparent outline-none text-[1.02rem] leading-[1.9] text-[#333] dark:text-white placeholder:text-stone-300 dark:placeholder:text-sop-fg/30 serif-font break-keep"
           />
@@ -118,16 +184,9 @@ const NoteModal: React.FC<NoteModalProps> = ({ date, reference, onClose }) => {
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             <span>삭제</span>
           </button>
-          <div className="flex flex-col items-end">
-            <span className={`text-[14px] font-bold noto-sans transition-colors duration-300 ${
-              saved ? 'text-green-600 dark:text-sop-gold' : 'text-stone-300 dark:text-sop-fg/40'
-            }`}>
-              {saved ? '✓ 저장됨' : '자동 저장'}
-            </span>
-            <span className="text-[11px] font-medium text-stone-400 dark:text-sop-fg/60">
-              이 기기에만 보관돼요
-            </span>
-          </div>
+          <span className="text-[12px] font-medium text-stone-400 dark:text-sop-fg/60">
+            자동 저장 · 이 기기에만 보관돼요
+          </span>
         </div>
       </div>
     </div>
