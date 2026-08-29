@@ -69,6 +69,48 @@ const NoteModal: React.FC<NoteModalProps> = ({ date, reference, onClose }) => {
     };
   }, []);
 
+  // 선택 범위를 insert로 교체. execCommand는 되돌리기(undo) 스택과 React onChange를
+  // 그대로 살려주므로 우선 사용, 미지원 브라우저에선 상태 직접 갱신으로 폴백.
+  const replaceRange = (ta: HTMLTextAreaElement, start: number, end: number, insert: string) => {
+    ta.setSelectionRange(start, end);
+    let done = false;
+    // 빈 문자열 insertText는 브라우저가 no-op/실패 처리하므로 delete 커맨드 사용
+    try { done = insert === '' ? document.execCommand('delete', false) : document.execCommand('insertText', false, insert); } catch (e) {}
+    if (!done) {
+      const next = ta.value.slice(0, start) + insert + ta.value.slice(end);
+      setText(next);
+      setSaved(false);
+      requestAnimationFrame(() => ta.setSelectionRange(start + insert.length, start + insert.length));
+    }
+  };
+
+  // 스마트 불릿: 줄 시작에서 "- "/"* " → "• ", 불릿 줄에서 Enter → 다음 줄 불릿 이어쓰기,
+  // 내용 없는 불릿에서 Enter → 불릿 해제(목록 종료).
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const ta = e.currentTarget;
+    const { selectionStart, selectionEnd, value } = ta;
+    if (selectionStart !== selectionEnd) return;
+    const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+    const line = value.slice(lineStart, selectionStart);
+
+    if (e.key === ' ' && (line === '-' || line === '*')) {
+      e.preventDefault();
+      replaceRange(ta, lineStart, selectionStart, '• ');
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      const m = line.match(/^(\s*)•\s(.*)$/);
+      if (!m) return;
+      e.preventDefault();
+      if (m[2].trim() === '') {
+        replaceRange(ta, lineStart, selectionStart, ''); // 빈 불릿 → 목록 종료
+      } else {
+        replaceRange(ta, selectionStart, selectionStart, `\n${m[1]}• `);
+      }
+    }
+  };
+
   const handleDelete = () => {
     if (window.confirm('이 날짜의 노트를 삭제할까요?')) {
       setText('');
@@ -164,6 +206,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ date, reference, onClose }) => {
             ref={textareaRef}
             value={text}
             onChange={(e) => { setText(e.target.value); setSaved(false); }}
+            onKeyDown={handleKeyDown}
             placeholder={"오늘 말씀에서 받은 은혜와 적용을 기록해보세요.\n쓰는 대로 자동 저장돼요."}
             className="w-full h-full resize-none bg-transparent outline-none text-[1.02rem] leading-[1.9] text-[#333] dark:text-white placeholder:text-stone-300 dark:placeholder:text-sop-fg/30 serif-font break-keep"
           />
