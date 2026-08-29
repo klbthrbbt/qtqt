@@ -164,7 +164,7 @@ const NoteModal: React.FC<NoteModalProps> = ({ date, reference, onClose }) => {
             ref={textareaRef}
             value={text}
             onChange={(e) => { setText(e.target.value); setSaved(false); }}
-            placeholder="오늘 말씀에서 받은 은혜와 적용을 기록해보세요..."
+            placeholder={"오늘 말씀에서 받은 은혜와 적용을 기록해보세요.\n쓰는 대로 자동 저장돼요."}
             className="w-full h-full resize-none bg-transparent outline-none text-[1.02rem] leading-[1.9] text-[#333] dark:text-white placeholder:text-stone-300 dark:placeholder:text-sop-fg/30 serif-font break-keep"
           />
         </div>
