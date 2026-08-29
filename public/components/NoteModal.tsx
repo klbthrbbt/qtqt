@@ -100,17 +100,25 @@ const NoteModal: React.FC<NoteModalProps> = ({ date, reference, onClose }) => {
           <button
             onClick={handleDelete}
             disabled={text.trim() === ''}
-            className={`text-[12px] font-semibold px-3 py-2 rounded-lg transition-colors ${
+            className={`flex items-center space-x-1.5 text-[14px] font-bold px-5 py-3 rounded-xl transition-colors noto-sans ${
               text.trim() === ''
-                ? 'text-stone-300 dark:text-sop-fg/25 cursor-not-allowed'
-                : 'text-red-400 hover:bg-red-50 dark:text-sop-pink dark:hover:bg-sop-pink/10'
+                ? 'text-stone-300 bg-stone-50 dark:text-sop-fg/30 dark:bg-sop-fg/5 cursor-not-allowed'
+                : 'text-red-500 bg-red-50 hover:bg-red-100 active:scale-95 dark:text-sop-pink dark:bg-sop-pink/15 dark:hover:bg-sop-pink/25'
             }`}
           >
-            삭제
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>삭제</span>
           </button>
-          <span className={`text-[11px] font-medium transition-opacity duration-300 eng-font ${saved ? 'opacity-100' : 'opacity-0'} text-stone-400 dark:text-sop-fg/60`}>
-            ✓ 저장됨 · 이 기기에만 보관
-          </span>
+          <div className="flex flex-col items-end">
+            <span className={`text-[14px] font-bold noto-sans transition-colors duration-300 ${
+              saved ? 'text-green-600 dark:text-sop-gold' : 'text-stone-300 dark:text-sop-fg/40'
+            }`}>
+              {saved ? '✓ 저장됨' : '자동 저장'}
+            </span>
+            <span className="text-[11px] font-medium text-stone-400 dark:text-sop-fg/60">
+              이 기기에만 보관돼요
+            </span>
+          </div>
         </div>
       </div>
     </div>

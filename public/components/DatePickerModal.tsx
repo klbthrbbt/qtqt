@@ -140,24 +140,26 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({ currentDate, onDateSe
                     {isToday(item.date) && (
                       <span className="px-2 py-0.5 bg-blue-600 dark:bg-sop-gold text-white dark:text-sop-bg-dark text-[10px] font-semibold rounded-full shrink-0">오늘</span>
                     )}
-                    {onOpenNote && hasNote(toDateKey(item.date)) && (
-                      <span
-                        role="link"
-                        tabIndex={0}
-                        onClick={(e) => { e.stopPropagation(); onOpenNote(item.date); }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onOpenNote(item.date); } }}
-                        className="px-2 py-0.5 border border-blue-300 dark:border-sop-pink/50 text-blue-600 dark:text-sop-pink text-[10px] font-semibold rounded-full shrink-0 eng-font hover:bg-blue-50 dark:hover:bg-sop-pink/10 transition-colors cursor-pointer"
-                      >
-                        My notes
-                      </span>
-                    )}
                   </div>
                 </div>
-                {isSelected(item.date) && (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 ml-2 text-blue-600 dark:text-sop-gold">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                )}
+                <div className="flex items-center space-x-3 shrink-0 ml-2">
+                  {onOpenNote && hasNote(toDateKey(item.date)) && (
+                    <span
+                      role="link"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); onOpenNote(item.date); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onOpenNote(item.date); } }}
+                      className="text-[12px] font-semibold eng-font text-blue-600 dark:text-sop-pink hover:underline cursor-pointer"
+                    >
+                      My notes
+                    </span>
+                  )}
+                  {isSelected(item.date) && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-blue-600 dark:text-sop-gold">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  )}
+                </div>
               </div>
             </button>
           ))}
