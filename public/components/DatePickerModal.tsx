@@ -1,10 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { formatReferenceLabel } from '../services/dbService';
+import { toDateKey, hasNote } from '../services/noteService';
 
 interface DatePickerModalProps {
   currentDate: Date;
   onDateSelect: (date: Date) => void;
+  onOpenNote?: (date: Date) => void;
   onClose: () => void;
 }
 
@@ -15,7 +17,7 @@ interface DevotionalData {
   reference: string;
 }
 
-const DatePickerModal: React.FC<DatePickerModalProps> = ({ currentDate, onDateSelect, onClose }) => {
+const DatePickerModal: React.FC<DatePickerModalProps> = ({ currentDate, onDateSelect, onOpenNote, onClose }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -137,6 +139,17 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({ currentDate, onDateSe
                     </span>
                     {isToday(item.date) && (
                       <span className="px-2 py-0.5 bg-blue-600 dark:bg-sop-gold text-white dark:text-sop-bg-dark text-[10px] font-semibold rounded-full shrink-0">오늘</span>
+                    )}
+                    {onOpenNote && hasNote(toDateKey(item.date)) && (
+                      <span
+                        role="link"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); onOpenNote(item.date); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onOpenNote(item.date); } }}
+                        className="px-2 py-0.5 border border-blue-300 dark:border-sop-pink/50 text-blue-600 dark:text-sop-pink text-[10px] font-semibold rounded-full shrink-0 eng-font hover:bg-blue-50 dark:hover:bg-sop-pink/10 transition-colors cursor-pointer"
+                      >
+                        My notes
+                      </span>
                     )}
                   </div>
                 </div>

@@ -6,12 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daily Grace Devotional</title>
     <script>
+      // 다크모드는 시스템 설정(prefers-color-scheme)만 따른다.
+      // 첫 페인트 전에 적용해 FOUC를 막는다. 런타임 변경 반영은 App.tsx의 matchMedia 리스너가 담당.
       (function () {
         try {
-          var saved = localStorage.getItem('theme');
-          var isDark = saved ? saved === 'dark'
-            : window.matchMedia('(prefers-color-scheme: dark)').matches;
-          if (isDark) document.documentElement.classList.add('dark');
+          if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+          }
         } catch (e) {}
       })();
     </script>
