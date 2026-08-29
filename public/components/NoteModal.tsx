@@ -42,6 +42,16 @@ const NoteModal: React.FC<NoteModalProps> = ({ date, reference, onClose }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
+  // 열릴 때 포커스 + 커서를 기존 텍스트 맨 끝으로 (autoFocus는 커서를 맨 앞에 둠)
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.focus();
+      const len = ta.value.length;
+      ta.setSelectionRange(len, len);
+    }
+  }, []);
+
   const handleDelete = () => {
     if (window.confirm('이 날짜의 노트를 삭제할까요?')) {
       setText('');
@@ -88,7 +98,6 @@ const NoteModal: React.FC<NoteModalProps> = ({ date, reference, onClose }) => {
             ref={textareaRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            autoFocus
             placeholder="오늘 말씀에서 받은 은혜와 적용을 기록해보세요..."
             className="w-full h-full resize-none bg-transparent outline-none text-[1.02rem] leading-[1.9] text-[#333] dark:text-white placeholder:text-stone-300 dark:placeholder:text-sop-fg/30 serif-font break-keep"
           />
