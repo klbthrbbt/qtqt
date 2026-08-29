@@ -57,7 +57,7 @@
 | 기능 / Feature | 설명 / Description |
 |---|---|
 | 📖 일일 본문 / Daily passage | 선택한 날짜의 큐티 본문을 자동 표시 / Auto‑renders the scheduled passage for the selected date. |
-| 🌏 다중 성경 버전 / Multiple versions | `개역개정(KRV)`·`NIV` 전환(코드에는 `우리말성경(URIMAN)` 흔적 잔존 — [기술 부채](#알려진-이슈--기술-부채--known-issues--tech-debt) 참고). |
+| 🌏 다중 성경 버전 / Multiple versions | `개역개정(KRV)`·`우리말성경(URIMAN)`·`NIV` 3탭 전환. |
 | 🌙 다크 모드 / Dark mode | FOUC 방지 인라인 부트 스크립트 + 시스템 설정 감지 + `localStorage('theme')` 영속화. |
 | 📅 날짜 탐색 / Date navigation | 날짜 선택 모달로 이전·이후 본문 이동. |
 | ⚡ 엣지 캐싱 / Edge caching | SWR(stale‑while‑revalidate) + immutable 캐시로 저지연 응답. |
@@ -132,7 +132,7 @@ dbService.fetchDevotionalFromDb(date)
    │                FROM bible_verses
    │                WHERE book_id=? AND (chapter*1000+verse) BETWEEN ? AND ?  (교차 장 지원)
    │                ORDER BY chapter, verse
-   │   4) translation별로 구절 누적 → texts{ KRV, (URIMAN), NIV }
+   │   4) translation별로 구절 누적 → texts{ KRV, URIMAN, NIV }
    ▼
 BibleTextResponse { reference, engReference, texts } → React 상태 → <BibleCard/>
 ```
@@ -436,30 +436,27 @@ curl "http://localhost:8787/api/bible?book=40&ch=8&start=14&end=15"
 
 이 섹션은 신규 기여자/유지보수자가 빠르게 함정을 피하도록 **의도적으로 솔직하게** 정리했습니다.
 
-1. **`BibleVersion` enum 불일치 / enum inconsistency.**
-   `public/types.ts`의 enum은 `KRV`, `NIV`만 정의하지만, `dbService.ts`·`bibleService.ts`·`geminiService.ts`와 `AppState.fileStatus.uriman`는 여전히 `BibleVersion.URIMAN`(우리말성경)을 참조합니다(커밋 "우리말성경 제거"의 잔재). Vite는 esbuild로 **타입 검사 없이 트랜스파일**하므로 런타임에선 `undefined` 키로 흘러가지만, `tsc` 기준으로는 오류입니다. enum에 `URIMAN`을 복원하거나 모든 참조를 제거해 정리할 필요가 있습니다.
-
-2. **프로덕션 URL 하드코딩 / Hardcoded production URLs.**
+1. **프로덕션 URL 하드코딩 / Hardcoded production URLs.**
    `dbService.ts`·`sheetService.ts`가 `https://qt-bible-api.junjunebug.workers.dev/api/...`를 직접 사용 → 로컬/스테이징 분리가 불가능. **상대 경로(`/api/...`)** 또는 환경변수 기반 베이스 URL로 전환을 권장.
 
-3. **이중 `wrangler.toml` / Duplicate config.** 루트와 `public/` 두 곳에 존재하며 `public/` 쪽은 `[assets]`가 없습니다. 설정 드리프트 위험.
+2. **이중 `wrangler.toml` / Duplicate config.** 루트와 `public/` 두 곳에 존재하며 `public/` 쪽은 `[assets]`가 없습니다. 설정 드리프트 위험.
 
-4. **미배포 템플릿 / Dead template.** `src/index.ts` + `src/endpoints/*`는 목업이며 배포에 연결되지 않습니다. 제거하거나 실제 기능으로 승격할지 결정 필요.
+3. **미배포 템플릿 / Dead template.** `src/index.ts` + `src/endpoints/*`는 목업이며 배포에 연결되지 않습니다. 제거하거나 실제 기능으로 승격할지 결정 필요.
 
-5. **미사용 코드 / Unused modules.** `bibleService.ts`, `geminiService.ts`, `CalendarModal.tsx`, `ReflectionCard.tsx`는 현재 `App.tsx`에 연결돼 있지 않습니다.
+4. **미사용 코드 / Unused modules.** `bibleService.ts`, `geminiService.ts`, `CalendarModal.tsx`, `ReflectionCard.tsx`는 현재 `App.tsx`에 연결돼 있지 않습니다.
 
-6. **테스트·린트 부재 / No tests or linting.** 회귀 방어 장치가 없습니다. 변경 시 수동 검증 필요.
+5. **테스트·린트 부재 / No tests or linting.** 회귀 방어 장치가 없습니다. 변경 시 수동 검증 필요.
 
-7. **D1 DDL 부재 / No authoritative DDL.** `bible_verses` 스키마는 쿼리에서 역추론할 수밖에 없습니다. `CREATE TABLE` 마이그레이션 추가를 권장.
+6. **D1 DDL 부재 / No authoritative DDL.** `bible_verses` 스키마는 쿼리에서 역추론할 수밖에 없습니다. `CREATE TABLE` 마이그레이션 추가를 권장.
 
-8. **importmap ↔ Vite 중복.** `index.html`의 `esm.sh` importmap과 Vite 번들이 공존합니다.
+7. **importmap ↔ Vite 중복.** `index.html`의 `esm.sh` importmap과 Vite 번들이 공존합니다.
 
 ---
 
 ## 로드맵 / Roadmap
 
 - [ ] AI 묵상 카드(`ReflectionCard` + `geminiService`) UI 연결
-- [ ] `BibleVersion`/URIMAN 일관성 정리
+- [x] `BibleVersion`/URIMAN 일관성 정리 — enum 복원으로 3버전 탭 활성화
 - [ ] API 베이스 URL 환경변수화(로컬/프로덕션 분리)
 - [ ] `bible_verses` `CREATE TABLE` 마이그레이션 추가
 - [ ] 기본 테스트/린트 도입(예: Vitest + ESLint)

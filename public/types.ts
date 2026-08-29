@@ -1,6 +1,7 @@
 
 export enum BibleVersion {
   KRV = '개역개정',
+  URIMAN = '우리말성경',
   NIV = 'NIV'
 }
 

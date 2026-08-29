@@ -69,7 +69,7 @@ App.tsx fetchData(date)
       → sheetService.getReferenceForDate(date)  → GET /api/reference  → ISO 날짜 매칭
       → parseReference("마 8:14~15")             → {bookId, chapter, start, endChapter, endVerse, ...}
       → GET /api/bible?book=&ch=&start=&endCh=&end= → D1 구절(교차 장 지원)
-      → translation별 누적 → texts{KRV,(URIMAN),NIV}
+      → translation별 누적 → texts{KRV,URIMAN,NIV}
   → BibleTextResponse → React 상태 → <BibleCard/>
 ```
 **레이스 가드**: `activeRequestRef`에 현재 요청 날짜를 저장하고 응답 시 일치할 때만 상태 반영(빠른 날짜 전환의 stale 응답 방어). 변경 시 이 불변식을 깨지 말 것.
@@ -169,14 +169,15 @@ App.tsx fetchData(date)
 
 작업 전 반드시 인지할 사항 / Read before editing:
 
-1. **`BibleVersion.URIMAN` 불일치** — `public/types.ts` enum에는 `KRV`, `NIV`만 있으나 `dbService`/`bibleService`/`geminiService`/`AppState.fileStatus.uriman`가 `URIMAN`을 참조. Vite(esbuild)는 타입검사를 건너뛰어 런타임에선 `undefined` 키로 통과하지만 `tsc`로는 오류. **버전 관련 코드를 만지면 이 불일치를 의식**하고, 가능하면 정리(enum 복원 또는 참조 제거).
-2. **프로덕션 URL 하드코딩** — `dbService.ts`/`sheetService.ts`에 `https://qt-bible-api.junjunebug.workers.dev`가 박혀 있음. 로컬 워커로 데이터를 검증하려면 직접 `curl localhost:8787/api/...` 사용. 리팩터 시 상대경로/환경변수 권장.
-3. **이중 `wrangler.toml`** — 루트가 진실 공급원. `public/wrangler.toml`은 `[assets]` 없는 보조본. 배포 관련 변경은 **루트만** 수정.
-4. **`src/index.ts` 미배포** — 실제 기능 아님. `main`을 `index.ts`로 바꾸면 현재 동작이 깨짐.
-5. **미사용 모듈** — `bibleService`, `geminiService`, `CalendarModal`, `ReflectionCard`.
-6. **테스트/린트 없음** — 수동 검증 필수.
-7. **D1 DDL 부재** — 스키마 변경 시 추론에 의존.
-8. **importmap ↔ Vite 중복** — `index.html`의 `esm.sh` importmap과 번들 공존.
+1. **프로덕션 URL 하드코딩** — `dbService.ts`/`sheetService.ts`에 `https://qt-bible-api.junjunebug.workers.dev`가 박혀 있음. 로컬 워커로 데이터를 검증하려면 직접 `curl localhost:8787/api/...` 사용. 리팩터 시 상대경로/환경변수 권장.
+2. **이중 `wrangler.toml`** — 루트가 진실 공급원. `public/wrangler.toml`은 `[assets]` 없는 보조본. 배포 관련 변경은 **루트만** 수정.
+3. **`src/index.ts` 미배포** — 실제 기능 아님. `main`을 `index.ts`로 바꾸면 현재 동작이 깨짐.
+4. **미사용 모듈** — `bibleService`, `geminiService`, `CalendarModal`, `ReflectionCard`.
+5. **테스트/린트 없음** — 수동 검증 필수.
+6. **D1 DDL 부재** — 스키마 변경 시 추론에 의존.
+7. **importmap ↔ Vite 중복** — `index.html`의 `esm.sh` importmap과 번들 공존.
+
+> (해결됨) 과거 gotcha였던 `BibleVersion.URIMAN` 불일치는 enum에 `URIMAN = '우리말성경'`을 복원하면서 해소 — 버전 탭은 `Object.values(BibleVersion)` 기반 3탭(개역개정/우리말성경/NIV).
 
 ---
 
