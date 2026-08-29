@@ -89,6 +89,7 @@ App.tsx fetchData(date)
 | 프런트 진입/루트 | `public/index.tsx`, `public/App.tsx` |
 | 타입 | `public/types.ts` (`BibleVersion`, `BibleTextResponse`, `AppState`) |
 | 데이터 결합(기본 경로) | `public/services/dbService.ts` |
+| 큐티 노트(localStorage) | `public/services/noteService.ts`, `public/components/NoteModal.tsx` |
 | 일정 조회 | `public/services/sheetService.ts` |
 | 로컬 XML 파서(미사용) | `public/services/bibleService.ts` |
 | Gemini(미사용) | `public/services/geminiService.ts` |
@@ -125,13 +126,15 @@ App.tsx fetchData(date)
 ## 6. 프런트엔드 심화 / Frontend Deep‑Dive
 
 ### 테마 / Theming (`public/index.html`)
-- **FOUC 방지**: `<head>` 인라인 스크립트가 첫 페인트 전에 `localStorage('theme')`/`prefers-color-scheme`로 `<html>.dark`를 설정.
+- **FOUC 방지**: `<head>` 인라인 스크립트가 첫 페인트 전에 `prefers-color-scheme`(시스템 설정)로 `<html>.dark`를 설정. 런타임 변경은 App.tsx의 matchMedia 리스너가 반영.
 - **Tailwind CDN** + 인라인 `tailwind.config`(`darkMode: 'class'`). **빌드용 tailwind 설정 파일 없음** — 색상 추가는 `index.html`의 `theme.extend.colors`를 편집.
 - 팔레트 = "Shades of Purple": `sop-bg/-dark/-fg/-hover/-gold/-orange/-pink/-purple`.
 - 유틸 클래스: `serif-font`, `noto-sans`, `eng-font`, `no-scrollbar`.
 
 ### 상태 / State (`public/App.tsx`)
-- 단일 `AppState`(useState). 다크 토글 = `classList.toggle('dark', next)` + `localStorage`.
+- 단일 `AppState`(useState). 다크모드는 **시스템 설정(prefers-color-scheme)만 추종**(수동 토글 없음, matchMedia 리스너로 실시간 반영).
+- ←/→ 키(데스크탑)·좌우 스와이프(모바일)로 버전 탭 순환 전환. 입력 중/모달 열림엔 무시.
+- 큐티 노트: `noteService`(localStorage, 키 `qtnote:YYYY-MM-DD`, 기기별)에 자동 저장. 우하단 플로팅 버튼 + 날짜선택창 'My notes' 링크.
 - 로딩 화면은 `LYRICS` 5개를 4초마다 순환.
 
 ### 본문 조회 — 세 가지 전략 / Three verse strategies
@@ -142,7 +145,7 @@ App.tsx fetchData(date)
 | `geminiService` | Gemini `gemini-3-flash-preview` 구조화 JSON(본문+묵상+기도), 429 백오프 | ⚠️ 미사용 |
 
 ### 컴포넌트 / Components
-연결됨: `Header`, `BibleCard`, `FooterNav`, `DatePickerModal`.
+연결됨: `Header`, `BibleCard`, `FooterNav`, `DatePickerModal`, `NoteModal`.
 미사용: `CalendarModal`, `ReflectionCard`(AI 묵상 UI 연결 시 활용 지점).
 
 ---

@@ -58,7 +58,9 @@
 |---|---|
 | 📖 일일 본문 / Daily passage | 선택한 날짜의 큐티 본문을 자동 표시 / Auto‑renders the scheduled passage for the selected date. |
 | 🌏 다중 성경 버전 / Multiple versions | `개역개정(KRV)`·`우리말성경(URIMAN)`·`NIV` 3탭 전환. |
-| 🌙 다크 모드 / Dark mode | FOUC 방지 인라인 부트 스크립트 + 시스템 설정 감지 + `localStorage('theme')` 영속화. |
+| 🌙 다크 모드 / Dark mode | 시스템 설정(prefers-color-scheme) 추종(수동 토글 없음), FOUC 방지 인라인 부트 스크립트 + 실시간 감지. |
+| 📝 큐티 노트 / QT notes | 날짜별 노트 작성·자동 저장(localStorage, 기기별). 날짜선택창에 'My notes' 링크 표시. |
+| ⌨️ 제스처 / Gestures | ←/→ 키(데스크탑)·좌우 스와이프(모바일)로 성경 버전 탭 전환. |
 | 📅 날짜 탐색 / Date navigation | 날짜 선택 모달로 이전·이후 본문 이동. |
 | ⚡ 엣지 캐싱 / Edge caching | SWR(stale‑while‑revalidate) + immutable 캐시로 저지연 응답. |
 | 🏃 레이스 가드 / Race‑safe fetch | `activeRequestRef`로 빠른 날짜 전환 시 stale 응답이 화면을 덮어쓰지 않도록 방어. |
