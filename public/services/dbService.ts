@@ -69,8 +69,8 @@ export function parseReference(ref: string): ParsedReference | null {
   // 1) 책약칭 + 장:절[ -~ (장:)?절 ]  (끝 앵커 없이 뒤 잡음 허용)
   //    예) "마 8:14", "마 8:14~15", "막 8:34~9:1"(교차 장), "마 5:1, 3"(콤마 뒤 무시)
   const m = s.match(/^(.+?)\s+(\d+)\s*:\s*(\d+)(?:\s*[-~]\s*(?:(\d+)\s*:\s*)?(\d+))?/);
-  // 2) 책약칭 + 장 (절 없음)  예) "시 117"
-  const mChapter = !m ? s.match(/^(.+?)\s+(\d+)\s*$/) : null;
+  // 2) 책약칭 + 장[~끝장][장]  예) "시 117", "대상 4장", "대상 4~6장" (장 전체 범위)
+  const mChapter = !m ? s.match(/^(.+?)\s+(\d+)(?:\s*[-~]\s*(\d+))?\s*장?\s*$/) : null;
 
   if (!m && !mChapter) return null;
 
@@ -95,13 +95,13 @@ export function parseReference(ref: string): ParsedReference | null {
     };
   }
 
-  // 장만 지정: 해당 장 전체
+  // 장만 지정: 해당 장(범위) 전체
   return {
     bookId,
     abbr,
     chapter,
     start: 1,
-    endChapter: chapter,
+    endChapter: mChapter![3] ? parseInt(mChapter![3]) : chapter,
     endVerse: CHAPTER_END_VERSE,
     chapterOnly: true,
     ...names,
@@ -110,7 +110,7 @@ export function parseReference(ref: string): ParsedReference | null {
 
 // 표시용 참조 라벨 생성 (교차 장 / 장-only 케이스 포함). 카드·모달 공용.
 export function buildReferenceLabel(p: ParsedReference, bookName: string): string {
-  if (p.chapterOnly) return `${bookName} ${p.chapter}`;
+  if (p.chapterOnly) return p.endChapter !== p.chapter ? `${bookName} ${p.chapter}~${p.endChapter}` : `${bookName} ${p.chapter}`;
   const head = `${bookName} ${p.chapter}:${p.start}`;
   if (p.endChapter !== p.chapter) return `${head}~${p.endChapter}:${p.endVerse}`;
   return p.start !== p.endVerse ? `${head}~${p.endVerse}` : head;
