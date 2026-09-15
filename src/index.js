@@ -114,6 +114,8 @@ export default {
       const ch = Number(url.searchParams.get('ch')) || 8;
       const start = Number(url.searchParams.get('start')) || 14;
       const end = Number(url.searchParams.get('end')) || 15;
+      // ech(끝 장): 시트 참조가 "대상 4~6장", "대상 7:1~9:34"처럼 장을 넘어갈 때 사용. 없으면 ch와 동일.
+      const ech = Number(url.searchParams.get('ech')) || ch;
 
       if (!env.DB) {
         return new Response("데이터베이스 연결 설정(Binding)이 누락되었습니다.", { status: 500 });
@@ -125,9 +127,17 @@ export default {
         const cached = await cache.match(cacheKey);
         if (cached) return cached;
 
-        const { results } = await env.DB.prepare(
-          "SELECT translation, verse, content FROM bible_verses WHERE book_id = ? AND chapter = ? AND verse BETWEEN ? AND ?"
-        ).bind(book, ch, start, end).all();
+        const stmt = ech > ch
+          ? env.DB.prepare(
+              "SELECT translation, chapter, verse, content FROM bible_verses " +
+              "WHERE book_id = ? AND (chapter > ? OR (chapter = ? AND verse >= ?)) " +
+              "AND (chapter < ? OR (chapter = ? AND verse <= ?)) ORDER BY chapter, verse"
+            ).bind(book, ch, ch, start, ech, ech, end)
+          : env.DB.prepare(
+              "SELECT translation, chapter, verse, content FROM bible_verses " +
+              "WHERE book_id = ? AND chapter = ? AND verse BETWEEN ? AND ? ORDER BY verse"
+            ).bind(book, ch, start, end);
+        const { results } = await stmt.all();
 
         const response = new Response(JSON.stringify(results), {
           headers: {

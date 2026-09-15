@@ -34,19 +34,69 @@ const ID_ENG_NAME_MAP: Record<number, string> = {
   60: "1 Peter", 61: "2 Peter", 62: "1 John", 63: "2 John", 64: "3 John", 65: "Jude", 66: "Revelation"
 };
 
-function parseAbbrReference(ref: string) {
-  const match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:[-~](\d+))?$/);
-  if (!match) return null;
+// 장 전체를 뜻할 때 끝 절로 쓰는 값(어떤 장도 이보다 절이 많지 않음).
+const WHOLE_CHAPTER_END = 999;
 
-  const abbr = match[1].trim();
-  const chapter = parseInt(match[2]);
-  const start = parseInt(match[3]);
-  const end = match[4] ? parseInt(match[4]) : start;
-  
-  const bookId = ABBR_ID_MAP[abbr];
-  if (!bookId) return null;
+interface ParsedReference {
+  bookId: number;
+  chapter: number;
+  start: number;
+  endChapter: number;
+  end: number;
+  wholeChapters: boolean;
+  bookName: string;
+  engBookName: string;
+}
 
-  return { bookId, chapter, start, end, bookName: ID_NAME_MAP[bookId], engBookName: ID_ENG_NAME_MAP[bookId] };
+// 시트 참조 형식(듀란노 표기)을 파싱한다. 지원 형식:
+//   "시 119:137~152"   한 장 안의 절 범위
+//   "요 3:16"          한 절
+//   "대상 7:1~9:34"    장을 넘어가는 절 범위
+//   "대상 4~6장"       장 전체 범위
+//   "대상 4장"         한 장 전체
+// 구분자는 '~' 또는 '-' 모두 허용.
+export function parseAbbrReference(ref: string): ParsedReference | null {
+  const text = ref.trim();
+  const build = (abbr: string, chapter: number, start: number, endChapter: number, end: number, wholeChapters: boolean) => {
+    const bookId = ABBR_ID_MAP[abbr.trim()];
+    if (!bookId) return null;
+    return { bookId, chapter, start, endChapter, end, wholeChapters, bookName: ID_NAME_MAP[bookId], engBookName: ID_ENG_NAME_MAP[bookId] };
+  };
+
+  // 장 넘어가는 절 범위: 책 N:V~M:W
+  let m = text.match(/^(.+?)\s+(\d+):(\d+)\s*[-~]\s*(\d+):(\d+)$/);
+  if (m) return build(m[1], +m[2], +m[3], +m[4], +m[5], false);
+
+  // 한 장 안의 절(범위): 책 N:V[~W]
+  m = text.match(/^(.+?)\s+(\d+):(\d+)(?:\s*[-~]\s*(\d+))?$/);
+  if (m) {
+    const chapter = +m[2];
+    const start = +m[3];
+    return build(m[1], chapter, start, chapter, m[4] ? +m[4] : start, false);
+  }
+
+  // 장 전체(범위): 책 N[~M]장
+  m = text.match(/^(.+?)\s+(\d+)(?:\s*[-~]\s*(\d+))?\s*장$/);
+  if (m) {
+    const chapter = +m[2];
+    return build(m[1], chapter, 1, m[3] ? +m[3] : chapter, WHOLE_CHAPTER_END, true);
+  }
+
+  return null;
+}
+
+// 화면 상단에 보여줄 참조 문자열(한글/영문).
+export function formatReference(p: ParsedReference) {
+  const multiChapter = p.endChapter !== p.chapter;
+  if (p.wholeChapters) {
+    const ko = multiChapter ? `${p.bookName} ${p.chapter}~${p.endChapter}장` : `${p.bookName} ${p.chapter}장`;
+    const en = multiChapter ? `${p.engBookName} ${p.chapter}-${p.endChapter}` : `${p.engBookName} ${p.chapter}`;
+    return { ko, en };
+  }
+  const range = multiChapter
+    ? `${p.chapter}:${p.start}~${p.endChapter}:${p.end}`
+    : `${p.chapter}:${p.start}${p.start !== p.end ? `~${p.end}` : ""}`;
+  return { ko: `${p.bookName} ${range}`, en: `${p.engBookName} ${range}` };
 }
 
 export const fetchDevotionalFromDb = async (date: Date): Promise<BibleTextResponse | null> => {
@@ -57,7 +107,8 @@ export const fetchDevotionalFromDb = async (date: Date): Promise<BibleTextRespon
     const params = parseAbbrReference(rawRef);
     if (!params) return null;
 
-    const url = `${WORKER_ENDPOINT}?book=${params.bookId}&ch=${params.chapter}&start=${params.start}&end=${params.end}`;
+    const multiChapter = params.endChapter !== params.chapter;
+    const url = `${WORKER_ENDPOINT}?book=${params.bookId}&ch=${params.chapter}&start=${params.start}&ech=${params.endChapter}&end=${params.end}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error("API Fetch Failed");
 
@@ -71,14 +122,15 @@ export const fetchDevotionalFromDb = async (date: Date): Promise<BibleTextRespon
     };
 
     rawData.forEach((item: any) => {
-      const content = `${item.verse}. ${item.content} `;
+      // 여러 장이면 절 번호 앞에 장을 붙여(예: "5:1.") 장이 바뀌는 지점을 구분한다.
+      const label = multiChapter && item.chapter != null ? `${item.chapter}:${item.verse}` : `${item.verse}`;
+      const content = `${label}. ${item.content} `;
       if (item.translation === "KRV") texts[BibleVersion.KRV] += content;
       else if (item.translation === "URIMAN") texts[BibleVersion.URIMAN] += content;
       else if (item.translation === "NIV") texts[BibleVersion.NIV] += content;
     });
 
-    const fullReference = `${params.bookName} ${params.chapter}:${params.start}${params.start !== params.end ? `~${params.end}` : ""}`;
-    const engReference = `${params.engBookName} ${params.chapter}:${params.start}${params.start !== params.end ? `~${params.end}` : ""}`;
+    const { ko: fullReference, en: engReference } = formatReference(params);
 
     return {
       reference: fullReference,

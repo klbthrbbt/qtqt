@@ -13,12 +13,13 @@ const BibleCard: React.FC<BibleCardProps> = ({ devotional, selectedVersion }) =>
   const displayReference = isEnglish && devotional.engReference ? devotional.engReference : devotional.reference;
 
   const parseVerses = (text: string) => {
-    const parts = text.split(/(\d+\.\s+)/).filter(Boolean);
+    // 절 라벨은 "12. " 또는 여러 장 본문일 때 "5:12. " 형식.
+    const parts = text.split(/((?:\d+:)?\d+\.\s+)/).filter(Boolean);
     const verses: { num: string; content: string }[] = [];
-    
+
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
-      if (/^\d+\.\s+$/.test(part)) {
+      if (/^(?:\d+:)?\d+\.\s+$/.test(part)) {
         const num = part.trim().replace('.', '');
         const content = parts[i + 1] || '';
         verses.push({ num, content: content.trim() });
@@ -54,7 +55,7 @@ const BibleCard: React.FC<BibleCardProps> = ({ devotional, selectedVersion }) =>
                   숫자와 본문의 첫 줄 베이스라인을 맞추기 위해 items-baseline을 사용합니다.
                   숫자 영역에 고정 너비와 우측 여백을 부여합니다.
                 */}
-                <span className="w-10 shrink-0 text-[13px] font-bold text-stone-400 dark:text-sop-gold/70 group-hover:text-blue-500 dark:group-hover:text-sop-gold transition-colors eng-font pr-4">
+                <span className="min-w-10 shrink-0 text-[13px] font-bold text-stone-400 dark:text-sop-gold/70 group-hover:text-blue-500 dark:group-hover:text-sop-gold transition-colors eng-font pr-4">
                   {v.num}
                 </span>
                 <p className={`flex-1 text-[1.05rem] sm:text-[1.15rem] text-[#333] dark:text-white leading-[1.8] break-keep ${isEnglish ? 'eng-font font-medium' : 'serif-font font-medium'}`}>
