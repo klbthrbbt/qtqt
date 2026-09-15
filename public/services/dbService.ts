@@ -34,69 +34,92 @@ const ID_ENG_NAME_MAP: Record<number, string> = {
   60: "1 Peter", 61: "2 Peter", 62: "1 John", 63: "2 John", 64: "3 John", 65: "Jude", 66: "Revelation"
 };
 
-// 장 전체를 뜻할 때 끝 절로 쓰는 값(어떤 장도 이보다 절이 많지 않음).
-const WHOLE_CHAPTER_END = 999;
+// 참조 문자열을 표준 형태로 정규화한다.
+// - 전각 콜론(：)·전각 숫자(０-９)·각종 대시(– — − －)·각종 물결(∼ 〜 ～)을 표준 ASCII로 치환
+// - 연속 공백을 하나로 축약 후 trim
+export function normalizeReference(ref: string): string {
+  return ref
+    .replace(/[：﹕]/g, ':')                                   // 전각/소형 콜론
+    .replace(/[–—−﹣－]/g, '-')                                // en/em/minus/전각 대시 → 하이픈
+    .replace(/[∼〜～]/g, '~')                                  // 각종 물결 → ~
+    .replace(/[０-９]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 0xFEE0)) // 전각 숫자 → 반각
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-interface ParsedReference {
+// 장 끝까지를 의미하는 절 상한. 정경 어느 장도 999절을 넘지 않는다(최대 시편 119편 176절).
+export const CHAPTER_END_VERSE = 999;
+
+export interface ParsedReference {
   bookId: number;
-  chapter: number;
-  start: number;
-  endChapter: number;
-  end: number;
-  wholeChapters: boolean;
+  abbr: string;        // 시트 원문 약칭 (예: "마") — 모달 라벨용
+  chapter: number;     // 시작 장
+  start: number;       // 시작 절
+  endChapter: number;  // 끝 장 (단일 장이면 chapter와 동일)
+  endVerse: number;    // 끝 절 (장-only면 CHAPTER_END_VERSE)
+  chapterOnly: boolean;
   bookName: string;
   engBookName: string;
 }
 
-// 시트 참조 형식(듀란노 표기)을 파싱한다. 지원 형식:
-//   "시 119:137~152"   한 장 안의 절 범위
-//   "요 3:16"          한 절
-//   "대상 7:1~9:34"    장을 넘어가는 절 범위
-//   "대상 4~6장"       장 전체 범위
-//   "대상 4장"         한 장 전체
-// 구분자는 '~' 또는 '-' 모두 허용.
-export function parseAbbrReference(ref: string): ParsedReference | null {
-  const text = ref.trim();
-  const build = (abbr: string, chapter: number, start: number, endChapter: number, end: number, wholeChapters: boolean) => {
-    const bookId = ABBR_ID_MAP[abbr.trim()];
-    if (!bookId) return null;
-    return { bookId, chapter, start, endChapter, end, wholeChapters, bookName: ID_NAME_MAP[bookId], engBookName: ID_ENG_NAME_MAP[bookId] };
+export function parseReference(ref: string): ParsedReference | null {
+  if (!ref) return null;
+  const s = normalizeReference(ref);
+
+  // 1) 책약칭 + 장:절[ -~ (장:)?절 ]  (끝 앵커 없이 뒤 잡음 허용)
+  //    예) "마 8:14", "마 8:14~15", "막 8:34~9:1"(교차 장), "마 5:1, 3"(콤마 뒤 무시)
+  const m = s.match(/^(.+?)\s+(\d+)\s*:\s*(\d+)(?:\s*[-~]\s*(?:(\d+)\s*:\s*)?(\d+))?/);
+  // 2) 책약칭 + 장[~끝장][장]  예) "시 117", "대상 4장", "대상 4~6장" (장 전체 범위)
+  const mChapter = !m ? s.match(/^(.+?)\s+(\d+)(?:\s*[-~]\s*(\d+))?\s*장?\s*$/) : null;
+
+  if (!m && !mChapter) return null;
+
+  const abbr = (m ? m[1] : mChapter![1]).trim();
+  const bookId = ABBR_ID_MAP[abbr];
+  if (!bookId) return null;
+
+  const chapter = parseInt(m ? m[2] : mChapter![2]);
+  const names = { bookName: ID_NAME_MAP[bookId], engBookName: ID_ENG_NAME_MAP[bookId] };
+
+  if (m) {
+    const start = parseInt(m[3]);
+    return {
+      bookId,
+      abbr,
+      chapter,
+      start,
+      endChapter: m[4] ? parseInt(m[4]) : chapter,
+      endVerse: m[5] ? parseInt(m[5]) : start,
+      chapterOnly: false,
+      ...names,
+    };
+  }
+
+  // 장만 지정: 해당 장(범위) 전체
+  return {
+    bookId,
+    abbr,
+    chapter,
+    start: 1,
+    endChapter: mChapter![3] ? parseInt(mChapter![3]) : chapter,
+    endVerse: CHAPTER_END_VERSE,
+    chapterOnly: true,
+    ...names,
   };
-
-  // 장 넘어가는 절 범위: 책 N:V~M:W
-  let m = text.match(/^(.+?)\s+(\d+):(\d+)\s*[-~]\s*(\d+):(\d+)$/);
-  if (m) return build(m[1], +m[2], +m[3], +m[4], +m[5], false);
-
-  // 한 장 안의 절(범위): 책 N:V[~W]
-  m = text.match(/^(.+?)\s+(\d+):(\d+)(?:\s*[-~]\s*(\d+))?$/);
-  if (m) {
-    const chapter = +m[2];
-    const start = +m[3];
-    return build(m[1], chapter, start, chapter, m[4] ? +m[4] : start, false);
-  }
-
-  // 장 전체(범위): 책 N[~M]장
-  m = text.match(/^(.+?)\s+(\d+)(?:\s*[-~]\s*(\d+))?\s*장$/);
-  if (m) {
-    const chapter = +m[2];
-    return build(m[1], chapter, 1, m[3] ? +m[3] : chapter, WHOLE_CHAPTER_END, true);
-  }
-
-  return null;
 }
 
-// 화면 상단에 보여줄 참조 문자열(한글/영문).
-export function formatReference(p: ParsedReference) {
-  const multiChapter = p.endChapter !== p.chapter;
-  if (p.wholeChapters) {
-    const ko = multiChapter ? `${p.bookName} ${p.chapter}~${p.endChapter}장` : `${p.bookName} ${p.chapter}장`;
-    const en = multiChapter ? `${p.engBookName} ${p.chapter}-${p.endChapter}` : `${p.engBookName} ${p.chapter}`;
-    return { ko, en };
-  }
-  const range = multiChapter
-    ? `${p.chapter}:${p.start}~${p.endChapter}:${p.end}`
-    : `${p.chapter}:${p.start}${p.start !== p.end ? `~${p.end}` : ""}`;
-  return { ko: `${p.bookName} ${range}`, en: `${p.engBookName} ${range}` };
+// 표시용 참조 라벨 생성 (교차 장 / 장-only 케이스 포함). 카드·모달 공용.
+export function buildReferenceLabel(p: ParsedReference, bookName: string): string {
+  if (p.chapterOnly) return p.endChapter !== p.chapter ? `${bookName} ${p.chapter}~${p.endChapter}` : `${bookName} ${p.chapter}`;
+  const head = `${bookName} ${p.chapter}:${p.start}`;
+  if (p.endChapter !== p.chapter) return `${head}~${p.endChapter}:${p.endVerse}`;
+  return p.start !== p.endVerse ? `${head}~${p.endVerse}` : head;
+}
+
+// 원문 참조 문자열 → 약칭 기반 라벨 (날짜 선택 모달용). 파싱 실패 시 정규화 문자열 반환.
+export function formatReferenceLabel(ref: string): string {
+  const p = parseReference(ref);
+  return p ? buildReferenceLabel(p, p.abbr) : normalizeReference(ref);
 }
 
 export const fetchDevotionalFromDb = async (date: Date): Promise<BibleTextResponse | null> => {
@@ -104,11 +127,11 @@ export const fetchDevotionalFromDb = async (date: Date): Promise<BibleTextRespon
     const rawRef = await getReferenceForDate(date);
     if (!rawRef) return null;
 
-    const params = parseAbbrReference(rawRef);
+    const params = parseReference(rawRef);
     if (!params) return null;
 
-    const multiChapter = params.endChapter !== params.chapter;
-    const url = `${WORKER_ENDPOINT}?book=${params.bookId}&ch=${params.chapter}&start=${params.start}&ech=${params.endChapter}&end=${params.end}`;
+    // 교차 장(endCh != ch)도 워커가 (장*1000+절) 복합 범위로 한 번에 조회한다.
+    const url = `${WORKER_ENDPOINT}?book=${params.bookId}&ch=${params.chapter}&start=${params.start}&endCh=${params.endChapter}&end=${params.endVerse}`;
     const response = await fetch(url);
     if (!response.ok) throw new Error("API Fetch Failed");
 
@@ -121,16 +144,19 @@ export const fetchDevotionalFromDb = async (date: Date): Promise<BibleTextRespon
       [BibleVersion.NIV]: ""
     };
 
+    // 절 번호만 표기한다("17.", "1."). 교차 장이면 절 번호가 장마다 초기화되지만
+    // 장 범위는 헤더 라벨(예: 요나 1:17~2:10)이 전달한다. "장:절"로 표기하면
+    // BibleCard.parseVerses의 /(\d+\.\s+)/ 분리와 충돌해 군더더기가 생긴다.
     rawData.forEach((item: any) => {
-      // 여러 장이면 절 번호 앞에 장을 붙여(예: "5:1.") 장이 바뀌는 지점을 구분한다.
-      const label = multiChapter && item.chapter != null ? `${item.chapter}:${item.verse}` : `${item.verse}`;
-      const content = `${label}. ${item.content} `;
+      const content = `${item.verse}. ${item.content} `;
       if (item.translation === "KRV") texts[BibleVersion.KRV] += content;
       else if (item.translation === "URIMAN") texts[BibleVersion.URIMAN] += content;
       else if (item.translation === "NIV") texts[BibleVersion.NIV] += content;
     });
 
-    const { ko: fullReference, en: engReference } = formatReference(params);
+    // 표시용 참조 라벨 생성 (교차 장 / 장-only 케이스 포함)
+    const fullReference = buildReferenceLabel(params, params.bookName);
+    const engReference = buildReferenceLabel(params, params.engBookName);
 
     return {
       reference: fullReference,

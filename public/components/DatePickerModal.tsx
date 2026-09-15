@@ -1,9 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { formatReferenceLabel } from '../services/dbService';
+import { toDateKey, hasNote } from '../services/noteService';
 
 interface DatePickerModalProps {
   currentDate: Date;
   onDateSelect: (date: Date) => void;
+  onOpenNote?: (date: Date) => void;
   onClose: () => void;
 }
 
@@ -14,7 +17,7 @@ interface DevotionalData {
   reference: string;
 }
 
-const DatePickerModal: React.FC<DatePickerModalProps> = ({ currentDate, onDateSelect, onClose }) => {
+const DatePickerModal: React.FC<DatePickerModalProps> = ({ currentDate, onDateSelect, onOpenNote, onClose }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -77,12 +80,7 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({ currentDate, onDateSe
     return `${m}/${day}`;
   };
 
-  const formatReference = (ref: string) => {
-    const match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:[-~](\d+))?$/);
-    if (!match) return ref;
-    const [, book, chapter, start, end] = match;
-    return end ? `${book} ${chapter}:${start}~${end}` : `${book} ${chapter}:${start}`;
-  };
+  const formatReference = (ref: string) => formatReferenceLabel(ref);
 
   const isSelected = (d: Date) => d.toDateString() === selectedDate.toDateString();
   const isToday = (d: Date) => d.toDateString() === today.toDateString();
@@ -144,11 +142,24 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({ currentDate, onDateSe
                     )}
                   </div>
                 </div>
-                {isSelected(item.date) && (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 ml-2 text-blue-600 dark:text-sop-gold">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                )}
+                <div className="flex items-center space-x-3 shrink-0 ml-2">
+                  {onOpenNote && hasNote(toDateKey(item.date)) && (
+                    <span
+                      role="link"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); onOpenNote(item.date); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onOpenNote(item.date); } }}
+                      className="text-[12px] font-semibold eng-font text-blue-600 dark:text-sop-pink hover:underline cursor-pointer"
+                    >
+                      My notes
+                    </span>
+                  )}
+                  {isSelected(item.date) && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-blue-600 dark:text-sop-gold">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  )}
+                </div>
               </div>
             </button>
           ))}

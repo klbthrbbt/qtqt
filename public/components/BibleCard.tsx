@@ -13,13 +13,12 @@ const BibleCard: React.FC<BibleCardProps> = ({ devotional, selectedVersion }) =>
   const displayReference = isEnglish && devotional.engReference ? devotional.engReference : devotional.reference;
 
   const parseVerses = (text: string) => {
-    // 절 라벨은 "12. " 또는 여러 장 본문일 때 "5:12. " 형식.
-    const parts = text.split(/((?:\d+:)?\d+\.\s+)/).filter(Boolean);
+    const parts = text.split(/(\d+\.\s+)/).filter(Boolean);
     const verses: { num: string; content: string }[] = [];
-
+    
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i];
-      if (/^(?:\d+:)?\d+\.\s+$/.test(part)) {
+      if (/^\d+\.\s+$/.test(part)) {
         const num = part.trim().replace('.', '');
         const content = parts[i + 1] || '';
         verses.push({ num, content: content.trim() });
